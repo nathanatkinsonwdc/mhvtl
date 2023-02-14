@@ -81,6 +81,7 @@
 #include "mhvtl_log.h"
 #include "mode.h"
 #include "ccan/crc32c/crc32c.h"
+#include "shim.h"
 
 char mhvtl_driver_name[] = "vtltape";
 
@@ -255,6 +256,8 @@ static struct tape_drives_table {
 	{ "SDLT600         ", init_sdlt600_ssc },
 	{ NULL, NULL},
 };
+
+int sockfd;
 
 static void (*drive_init)(struct lu_phy_attr *) = init_default_ssc;
 
@@ -1825,7 +1828,7 @@ static struct device_type_template ssc_ops = {
 
 		{ssc_read_6,},
 		{spc_illegal_op,},
-		{ssc_write_6,},
+		{ssc_write_6_shim,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
@@ -2447,7 +2450,11 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	buf = (uint8_t *)zalloc(lu_ssc.bufsize);
+	/* initialize shim socket */
+	sockfd = socket_init(SOCK_NAME);
+
+	/* initialize shim shared memory */
+	shm_init(buf, lu_ssc.bufsize);
 	if (NULL == buf) {
 		perror("Problems allocating memory");
 		exit(1);
@@ -2622,7 +2629,8 @@ exit:
 	ioctl(cdev, VTL_REMOVE_LU, &ctl);
 	cleanup_lu(&lunit);
 	close(cdev);
-	free(buf);
+	close(sockfd);
+	shm_close(buf);
 	dec_fifo_count();
 	if (lunit.fifo_fd) {
 		fclose(lunit.fifo_fd);
