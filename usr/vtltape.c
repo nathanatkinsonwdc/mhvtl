@@ -2451,7 +2451,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* initialize shim socket */
-	sockfd = socket_init(SOCK_NAME);
+	sockfd = socket_init(MHVTL_SOCK_NAME);
 
 	/* initialize shim shared memory */
 	shm_init(buf, lu_ssc.bufsize);

@@ -12,7 +12,7 @@
 // uses UNIX domain stream sockets
 int socket_init(const char *sockpath) {
 	if (sockpath == NULL)
-		sockpath = SOCK_NAME;
+		sockpath = MHVTL_SOCK_NAME;
 
     struct sockaddr_un server;
 	int fd;
@@ -112,14 +112,14 @@ void writeBlocksRequest(struct scsi_cmd *cmd, uint32_t src_sz) {
 	uint64_t current_position;
 	int64_t remaining_capacity;
 	uint8_t *sam_stat = &cmd->dbuf_p->sam_stat;
-	struct socket_cmd sockcmd;
-	struct socket_stat sockstat;
+	struct mhvtl_socket_cmd sockcmd;
+	struct mhvtl_socket_stat sockstat;
 
 	lu_ssc = cmd->lu->lu_private;
 	src_len = 0;
-	sockcmd.cdb = cmd->scb;
+	memcpy(sockcmd.cdb, *cmd->scb, sizeof(uint8_t) * cmd->scb_len); // possibly a way to avoid this copy?
 	sockcmd.sz = src_sz;
-	memset(&sockstat, 0, sizeof(struct socket_stat));
+	memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
 
 	/* Check if we hit EOT and fail before attempting to write */
 	current_position = current_tape_offset();

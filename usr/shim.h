@@ -11,15 +11,15 @@
 #define SHM_SZ 16 * 1024 * 1024
 #define SHM_MODE 0660
 #define SHM_OFLAGS O_RDWR | O_CREAT
-#define SOCK_NAME "/tmp/mhvtl.sock"
+#define MHVTL_SOCK_NAME "/tmp/mhvtl.sock"
 
-struct socket_cmd {
-    unsigned char *cdb; // scsi cdb
+struct mhvtl_socket_cmd {
+    unsigned char cdb[MAX_COMMAND_SIZE]; // scsi cdb
     unsigned int sz; // block size
 };
 
-struct socket_stat {
-    uint8_t *sense;
+struct mhvtl_socket_stat {
+    uint8_t sense[SENSE_BUF_SIZE];
     uint64_t current_position;
 };
 
