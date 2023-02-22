@@ -8,6 +8,8 @@
 #include "mhvtl_log.h"
 #include "shim.h"
 
+unsigned int cmd_id = 0;
+
 // socket backend is responsible for listening server, including sockpath link/unlink
 // uses UNIX domain stream sockets
 int socket_init(const char *sockpath) {
@@ -117,8 +119,12 @@ void writeBlocksRequest(struct scsi_cmd *cmd, uint32_t src_sz) {
 
 	lu_ssc = cmd->lu->lu_private;
 	src_len = 0;
-	memcpy(sockcmd.cdb, *cmd->scb, sizeof(uint8_t) * cmd->scb_len); // possibly a way to avoid this copy?
+	
+	sockcmd.opcode = sockcmd.cdb[0];
 	sockcmd.sz = src_sz;
+	sockcmd.id = ++cmd_id;
+	sockcmd.serialNo = cmd->dbuf_p->serialNo;
+	memcpy(sockcmd.cdb, *cmd->scb, sizeof(uint8_t) * cmd->scb_len); // possibly a way to avoid this copy?
 	memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
 
 	/* Check if we hit EOT and fail before attempting to write */

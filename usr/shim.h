@@ -14,13 +14,16 @@
 #define MHVTL_SOCK_NAME "/tmp/mhvtl.sock"
 
 struct mhvtl_socket_cmd {
-    unsigned char cdb[MAX_COMMAND_SIZE]; // scsi cdb
-    unsigned int sz; // block size
+    uint16_t id; // packet ID
+    uint8_t opcode; // scsi opcode
+    uint16_t sz; // block size
+    unsigned long long serialNo;
+    uint8_t cdb[MAX_COMMAND_SIZE]; // scsi cdb
 };
 
 struct mhvtl_socket_stat {
+    uint16_t id;
     uint8_t sense[SENSE_BUF_SIZE];
-    uint64_t current_position;
 };
 
 extern struct MAM mam;
