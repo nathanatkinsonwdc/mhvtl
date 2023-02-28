@@ -138,7 +138,7 @@ vtllibrary:	vtllibrary.o vtllib.h mhvtl_scsi.h \
 		default_smc_pm.o
 
 vtltape:	vtltape.o vtlcart.o vtllib.h vtltape.h mhvtl_scsi.h \
-		libvtlscsi.so ssc.o default_ssc_pm.o \
+		libvtlscsi.so ssc.o shim.o default_ssc_pm.o \
 		ult3580_pm.o \
 		hp_ultrium_pm.o \
 		stk9x40_pm.o \
@@ -150,7 +150,7 @@ vtltape:	vtltape.o vtlcart.o vtllib.h vtltape.h mhvtl_scsi.h \
 		be_byteshift.h \
 		mhvtl_io.o \
 		../kernel/vtl_common.h
-	$(CC) $(CFLAGS) -o vtltape vtltape.o ssc.o \
+	$(CC) $(CFLAGS) -o vtltape vtltape.o ssc.o shim.o \
 		default_ssc_pm.o \
 		ult3580_pm.o \
 		hp_ultrium_pm.o \
@@ -161,7 +161,7 @@ vtltape:	vtltape.o vtlcart.o vtllib.h vtltape.h mhvtl_scsi.h \
 		crc32c.o \
 		reed-solomon.o \
 		mhvtl_io.o \
-		-lz -L. -lvtlcart -lvtlscsi
+		-lz -L. -lvtlcart -lvtlscsi -lrt
 
 mhvtl-device-conf-generator: mhvtl-device-conf-generator.c
 

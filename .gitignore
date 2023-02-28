@@ -4,6 +4,8 @@
 /cscope.*
 /kernel/.*.ko.cmd
 /kernel/.*.o.cmd
+/kernel/*.cmd
+/kernel/*.mod
 /kernel/.tmp_versions/
 /kernel/mhvtl.mod.c
 /kernel/Module.symvers

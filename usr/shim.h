@@ -1,11 +1,8 @@
 #ifndef SHIM_H
 #define SHIM_H
 
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <fcntl.h>
-#include <stddef.h>
 #include "vtl_common.h"
+#include "vtllib.h"
 
 #define SHM_NAME "/mhvtl_dbuf"
 #define SHM_SZ 16 * 1024 * 1024
