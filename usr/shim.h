@@ -6,7 +6,7 @@
 
 #define SHM_NAME "/mhvtl_dbuf"
 #define SHM_SZ 16 * 1024 * 1024
-#define SHM_MODE 0660
+#define SHM_MODE 0666
 #define SHM_OFLAGS O_RDWR | O_CREAT
 #define MHVTL_SOCK_NAME "/tmp/mhvtl.sock"
 
