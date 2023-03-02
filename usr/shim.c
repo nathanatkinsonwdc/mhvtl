@@ -62,18 +62,16 @@ int socket_init(const char *sockpath) {
 
 // don't forget to close and compile with -lrt
 // shm_init() should be called to replace buffer in main() that gets passed to mhvtl_ds
-void shm_init(uint8_t *dbuf, size_t sz) {
+void shm_init(uint8_t **dbuf, size_t sz) {
 	int fd;
-	mode_t old_umask = umask(0);
 
     if ((fd = shm_open(SHM_NAME, SHM_OFLAGS, SHM_MODE)) < 0)
         MHVTL_ERR("Could not initialize shared memory: %s", strerror(errno));
 	if (ftruncate(fd, SHM_SZ) < 0)
         MHVTL_ERR("Failed to set shared memory size: %s", strerror(errno));
-    if ((dbuf = (uint8_t *)mmap(NULL, sz, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED) 
+    if ((*dbuf = (uint8_t *)mmap(NULL, sz, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED) 
         MHVTL_ERR("Failed to map shared memory: %s", strerror(errno));
 
-	umask(old_umask);
     close(fd);
 }
 

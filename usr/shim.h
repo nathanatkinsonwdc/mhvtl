@@ -29,7 +29,7 @@ extern int OK_to_write;
 extern int sockfd;
 
 int socket_init(const char *sockpath);
-void shm_init(uint8_t *dbuf, size_t sz);
+void shm_init(uint8_t **dbuf, size_t sz);
 void shm_close(uint8_t *dbuf);
 uint8_t ssc_write_6_shim(struct scsi_cmd *cmd);
 void writeBlocksRequest(struct scsi_cmd *cmd, uint32_t src_sz);

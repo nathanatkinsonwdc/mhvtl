@@ -2456,8 +2456,8 @@ int main(int argc, char *argv[])
 	}
 
 	/* initialize shim shared memory */
-	shm_init(buf, lu_ssc.bufsize);
-	if (NULL == buf) {
+	shm_init(&buf, lu_ssc.bufsize);
+	if (buf == NULL) {
 		perror("Problems allocating memory");
 		exit(1);
 	}
