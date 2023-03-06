@@ -2335,6 +2335,7 @@ int main(int argc, char *argv[])
 	const char *name = "mhvtl";
 	unsigned minor = 0;
 
+	int is_connected = 0;
 	struct mhvtl_header mhvtl_cmd;
 	struct mhvtl_header *cmd;
 	struct mhvtl_ctl ctl;
@@ -2450,11 +2451,6 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	/* initialize shim socket */
-	while ((sockfd = socket_init(MHVTL_SOCK_NAME)) < 0) {
-		sleep(1);
-	}
-
 	/* initialize shim shared memory */
 	shm_init(&buf, lu_ssc.bufsize);
 	if (buf == NULL) {
@@ -2538,7 +2534,12 @@ int main(int argc, char *argv[])
 
 	child_cleanup = not_started;
 
+
 	for (;;) {
+		/* Check socket connection and retry if failed */
+		if (!is_connected)
+			is_connected = ((sockfd = socket_init(MHVTL_SOCK_NAME)) < 0) ? 0 : 1;
+
 		/* Check for anything in the messages Q */
 		mlen = msgrcv(r_qid, &lu_ssc.r_entry, MAXOBN, my_id, IPC_NOWAIT);
 		if (mlen > 0) {
@@ -2573,8 +2574,7 @@ int main(int argc, char *argv[])
 						"[%ld] Cleaning up after add_lu "
 						"child pid: %d",
 							(long)getpid(), child_cleanup);
-					child_cleanup = 0;
-				} else {
+					child_cleanup = 0;				} else {
 					MHVTL_DBG(2, "[%ld] Child cleanup of %ld still outstanding", (long)getpid(), (long)child_cleanup);
 				}
 			}
