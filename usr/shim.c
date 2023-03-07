@@ -136,14 +136,15 @@ void writeBlocksRequest(struct scsi_cmd *cmd, uint32_t src_sz) {
 
 	memcpy(sockcmd.cdb, cmd->scb, sizeof(uint8_t) * cmd->scb_len); // possibly a way to avoid this copy?
 	memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
-	sockcmd.opcode = sockcmd.cdb[0];
+	sockcmd.type = HOST_WR_CMD;
 	sockcmd.sz = src_sz;
 	sockcmd.id = ++cmd_id;
 	sockcmd.serialNo = cmd->dbuf_p->serialNo;
 
 	/* Attempt write by requesting over socket */
 	if (send(sockfd, &sockcmd, sizeof(sockcmd), 0) < 0) {
-		MHVTL_ERR("failed to send packet");
+		MHVTL_DBG(1, "failed to send packet");
+		is_connected = 0;
 	}
 
 	// if (recv(sockfd, &sockstat, sizeof(sockstat), 0) < 0) {

@@ -10,9 +10,16 @@
 #define SHM_OFLAGS O_RDWR | O_CREAT
 #define MHVTL_SOCK_NAME "/tmp/mhvtl.sock"
 
+typedef enum { 
+    FREE, HOST_CMD_NEW, HOST_WR_CMD, 
+    HOST_RD_CMD, STREAM_BUFFER_REQUEST, STREAM_SEGMENT_REQUEST, 
+    CONTAINER, HOST_OBJECT, SUPERBLOCK, 
+    WRITE_FLUSH, MAP_UPDATE, HOST_LOCATE_CMD
+} shimTaskType;
+
 struct mhvtl_socket_cmd {
     uint16_t id; // packet ID
-    uint8_t opcode; // scsi opcode
+    shimTaskType type; // backend task type
     uint16_t sz; // block size
     unsigned long long serialNo;
     uint8_t cdb[MAX_COMMAND_SIZE]; // scsi cdb
@@ -27,6 +34,8 @@ extern struct MAM mam;
 extern int current_state;
 extern int OK_to_write;
 extern int sockfd;
+extern int is_connected;
+
 
 int socket_init(const char *sockpath);
 void shm_init(uint8_t **dbuf, size_t sz);

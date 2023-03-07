@@ -258,6 +258,7 @@ static struct tape_drives_table {
 };
 
 int sockfd;
+int is_connected = 0;
 
 static void (*drive_init)(struct lu_phy_attr *) = init_default_ssc;
 
@@ -2335,7 +2336,6 @@ int main(int argc, char *argv[])
 	const char *name = "mhvtl";
 	unsigned minor = 0;
 
-	int is_connected = 0;
 	struct mhvtl_header mhvtl_cmd;
 	struct mhvtl_header *cmd;
 	struct mhvtl_ctl ctl;
@@ -2451,13 +2451,6 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	/* initialize shim shared memory */
-	shm_init(&buf, lu_ssc.bufsize);
-	if (buf == NULL) {
-		perror("Problems allocating memory");
-		exit(1);
-	}
-
 	if ((chdir(MHVTL_HOME_PATH)) < 0) {
 		perror("Unable to change directory to " MHVTL_HOME_PATH);
 		exit(-1);
@@ -2534,6 +2527,12 @@ int main(int argc, char *argv[])
 
 	child_cleanup = not_started;
 
+	/* initialize shim shared memory */
+	shm_init(&buf, lu_ssc.bufsize);
+	if (buf == NULL) {
+		perror("Problems allocating memory");
+		exit(1);
+	}
 
 	for (;;) {
 		/* Check socket connection and retry if failed */
