@@ -30,7 +30,6 @@
 #include "shim.h"
 
 unsigned int cmd_id = 0;
-extern 
 
 // socket backend is responsible for listening server, including sockpath link/unlink
 // uses UNIX domain stream sockets
@@ -151,7 +150,7 @@ uint8_t ssc_write_6_shim(struct scsi_cmd *cmd) {
 	current_state = MHVTL_STATE_WRITING;
 
 	opcode_6_params(cmd, &count, &sz);
-	MHVTL_DBG(3, "%s(): %d block%s of %d bytes (%ld) **",
+	MHVTL_DBG(1, "%s(): %d block%s of %d bytes (%ld) **",
 				__func__,
 				count, count == 1 ? "" : "s",
 				sz,
@@ -176,6 +175,11 @@ uint8_t ssc_write_6_shim(struct scsi_cmd *cmd) {
 	sockcmd.count = count;
 	sockcmd.id = ++cmd_id;
 	sockcmd.serialNo = cmd->dbuf_p->serialNo;
+
+	MHVTL_DBG(1, "SHIM: %d block%s of %d bytes (%ld) **",
+				sockcmd.count, sockcmd.count == 1 ? "" : "s",
+				sockcmd.sz,
+				(long)sockcmd.serialNo);
 
 	if (OK_to_write) {
 		/* TODO: handle edge cases that writeBlock() handles */
