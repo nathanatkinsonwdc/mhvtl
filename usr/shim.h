@@ -21,13 +21,16 @@ struct mhvtl_socket_cmd {
     uint16_t id; // packet ID
     shimTaskType type; // backend task type
     uint16_t sz; // block size
+    uint16_t count; // block count
     unsigned long long serialNo;
     uint8_t cdb[MAX_COMMAND_SIZE]; // scsi cdb
 };
 
 struct mhvtl_socket_stat {
-    uint16_t id;
-    uint8_t sense[SENSE_BUF_SIZE];
+    uint16_t id; // packet ID
+    uint8_t sense_key;
+    uint32_t sense_ascq; // sense additional field
+    struct s_sd sense_sd;
 };
 
 extern struct MAM mam;

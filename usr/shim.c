@@ -86,8 +86,6 @@ uint8_t ssc_write_6_shim(struct scsi_cmd *cmd) {
 	struct priv_lu_ssc *lu_ssc;
 	int count;
 	int sz;
-	int k;
-	int retval = 0;
 
 	lu_ssc = cmd->lu->lu_private;
 	dbuf_p = cmd->dbuf_p;
@@ -114,18 +112,14 @@ uint8_t ssc_write_6_shim(struct scsi_cmd *cmd) {
 		return SAM_STAT_CHECK_CONDITION;
 
 	if (OK_to_write) {
+		/* TODO: handle edge cases that writeBlock() handles */
 		writeBlocksRequest(cmd, sz);
 
-		// TODO: remove filesystem write by fully implementing write flow in backend
-		for (k = 0; k < count; k++) {
-			retval = writeBlock(cmd, sz);
-			dbuf_p->data += retval;
-
-			/* If sam_stat != SAM_STAT_GOOD, return */
-			if (cmd->dbuf_p->sam_stat)
-				return cmd->dbuf_p->sam_stat;
-		}
+		/* If sam_stat != SAM_STAT_GOOD, return */
+		if (cmd->dbuf_p->sam_stat)
+			return cmd->dbuf_p->sam_stat;
 	}
+
 	return SAM_STAT_GOOD;
 }
 
@@ -138,23 +132,58 @@ void writeBlocksRequest(struct scsi_cmd *cmd, uint32_t src_sz) {
 	memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
 	sockcmd.type = HOST_WR_CMD;
 	sockcmd.sz = src_sz;
+	sockcmd.count = cmd->dbuf_p->sz / src_sz;
 	sockcmd.id = ++cmd_id;
 	sockcmd.serialNo = cmd->dbuf_p->serialNo;
 
 	/* Attempt write by requesting over socket */
 	if (send(sockfd, &sockcmd, sizeof(sockcmd), 0) < 0) {
 		MHVTL_DBG(1, "failed to send packet");
+		sam_medium_error(E_WRITE_ERROR, &cmd->dbuf_p->sam_stat);
 		is_connected = 0;
+		return;
 	}
 
-	// if (recv(sockfd, &sockstat, sizeof(sockstat), 0) < 0) {
-	// 	MHVTL_ERR("failed to receive packet");
-	// }
+	/* Wait for status */
+	if (recv(sockfd, &sockstat, sizeof(sockstat), 0) < 0) {
+		MHVTL_DBG(1, "failed to receive packet");
+		sam_medium_error(E_WRITE_ERROR, &cmd->dbuf_p->sam_stat);
+		is_connected = 0;
+		return;
+	}
 
-	/* TODO: verify proper sense codes returned (see mhvtl_scsi.h) */
-	// switch(sockstat.sense[0]) {
-	// 	case ... -> sam_no_sense(KEY, NO_SENSE, cmd->dbuf_p->sam_stat)
-	// 	default ... 
-	// }
-
+	/* Check status */
+	switch (sockstat.sense_key) {
+		case UNIT_ATTENTION:
+			sam_unit_attention(sockstat.sense_ascq, &cmd->dbuf_p->sam_stat);
+			break;
+		case NOT_READY:
+			sam_not_ready(sockstat.sense_ascq, &cmd->dbuf_p->sam_stat);
+			break;
+		case ILLEGAL_REQUEST:
+			sam_illegal_request(sockstat.sense_ascq, &sockstat.sense_sd, &cmd->dbuf_p->sam_stat);
+			break;
+		case MEDIUM_ERROR:
+			sam_medium_error(sockstat.sense_ascq, &cmd->dbuf_p->sam_stat);
+			break;
+		case BLANK_CHECK:
+			sam_blank_check(sockstat.sense_ascq, &cmd->dbuf_p->sam_stat);
+			break;
+		case DATA_PROTECT:
+			sam_data_protect(sockstat.sense_ascq, &cmd->dbuf_p->sam_stat);
+			break;
+		case HARDWARE_ERROR:
+			sam_hardware_error(sockstat.sense_ascq, &cmd->dbuf_p->sam_stat);
+			break;
+		case SD_ILI:
+		case SD_FILEMARK:
+		case (VOLUME_OVERFLOW | SD_EOM):
+		case SD_EOM:
+		case NO_SENSE:
+			if (sockstat.sense_key || sockstat.sense_ascq) // if not both NO_SENSE and NO_ADDITIONAL_SENSE
+				sam_no_sense(sockstat.sense_key, sockstat.sense_ascq, &cmd->dbuf_p->sam_stat);
+			break;
+		default:
+			break;
+	}
 }
