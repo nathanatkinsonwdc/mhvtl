@@ -1827,7 +1827,7 @@ static struct device_type_template ssc_ops = {
 		{spc_illegal_op,},
 		{spc_illegal_op,},
 
-		{ssc_read_6,},
+		{ssc_read_6_shim,},
 		{spc_illegal_op,},
 		{ssc_write_6_shim,},
 		{spc_illegal_op,},

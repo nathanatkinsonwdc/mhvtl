@@ -20,8 +20,8 @@ typedef enum {
 struct mhvtl_socket_cmd {
     uint16_t id; // packet ID
     shimTaskType type; // backend task type
-    uint16_t sz; // block size
-    uint16_t count; // block count
+    uint32_t sz; // block size
+    uint32_t count; // block count
     unsigned long long serialNo;
     uint8_t cdb[MAX_COMMAND_SIZE]; // scsi cdb
 };
@@ -44,6 +44,7 @@ int socket_init(const char *sockpath);
 void shm_init(uint8_t **dbuf, size_t sz);
 void shm_close(uint8_t *dbuf);
 uint8_t ssc_write_6_shim(struct scsi_cmd *cmd);
-void writeBlocksRequest(struct scsi_cmd *cmd, uint32_t src_sz);
+uint8_t ssc_read_6_shim(struct scsi_cmd *cmd);
+uint8_t ssc_locate_shim(struct scsi_cmd *cmd);
 
 #endif
