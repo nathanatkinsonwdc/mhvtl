@@ -30,6 +30,7 @@
 #include "shim.h"
 
 unsigned int cmd_id = 0;
+extern 
 
 // socket backend is responsible for listening server, including sockpath link/unlink
 // uses UNIX domain stream sockets
@@ -80,12 +81,69 @@ void shm_close(uint8_t *dbuf) {
 	munmap((void *)dbuf, SHM_SZ);
 }
 
-// same as ssc_write_6, but sends write cmd over socket for completion elsewhere 
+static uint8_t submit_to_shim(struct mhvtl_socket_cmd *sockcmd, struct mhvtl_socket_stat *sockstat, struct mhvtl_ds *dbuf_p) {
+	// Request command completion over socket
+	if (send(sockfd, sockcmd, sizeof(struct mhvtl_socket_cmd), 0) < 0) {
+		MHVTL_DBG(1, "failed to send packet");
+		sam_medium_error(E_WRITE_ERROR, &dbuf_p->sam_stat);
+		is_connected = 0;
+		return dbuf_p->sam_stat;
+	}
+
+	// Wait for status
+	if (recv(sockfd, sockstat, sizeof(struct mhvtl_socket_stat), 0) < 0) {
+		MHVTL_DBG(1, "failed to receive packet");
+		sam_medium_error(E_WRITE_ERROR, &dbuf_p->sam_stat);
+		is_connected = 0;
+		return dbuf_p->sam_stat;
+	}
+
+	// Check status
+	switch (sockstat->sense_key) {
+		case UNIT_ATTENTION:
+			sam_unit_attention(sockstat->sense_ascq, &dbuf_p->sam_stat);
+			break;
+		case NOT_READY:
+			sam_not_ready(sockstat->sense_ascq, &dbuf_p->sam_stat);
+			break;
+		case ILLEGAL_REQUEST:
+			sam_illegal_request(sockstat->sense_ascq, &sockstat->sense_sd, &dbuf_p->sam_stat);
+			break;
+		case MEDIUM_ERROR:
+			sam_medium_error(sockstat->sense_ascq, &dbuf_p->sam_stat);
+			break;
+		case BLANK_CHECK:
+			sam_blank_check(sockstat->sense_ascq, &dbuf_p->sam_stat);
+			break;
+		case DATA_PROTECT:
+			sam_data_protect(sockstat->sense_ascq, &dbuf_p->sam_stat);
+			break;
+		case HARDWARE_ERROR:
+			sam_hardware_error(sockstat->sense_ascq, &dbuf_p->sam_stat);
+			break;
+		case SD_ILI:
+		case SD_FILEMARK:
+		case (VOLUME_OVERFLOW | SD_EOM):
+		case SD_EOM:
+		case NO_SENSE:
+			if (sockstat->sense_key || sockstat->sense_ascq) // if not both NO_SENSE and NO_ADDITIONAL_SENSE
+				sam_no_sense(sockstat->sense_key, sockstat->sense_ascq, &dbuf_p->sam_stat);
+			break;
+		default:
+			break;
+	}
+
+	return dbuf_p->sam_stat;
+}
+
 uint8_t ssc_write_6_shim(struct scsi_cmd *cmd) {
     struct mhvtl_ds *dbuf_p;
 	struct priv_lu_ssc *lu_ssc;
 	int count;
 	int sz;
+
+	struct mhvtl_socket_cmd sockcmd;
+	struct mhvtl_socket_stat sockstat;
 
 	lu_ssc = cmd->lu->lu_private;
 	dbuf_p = cmd->dbuf_p;
@@ -111,79 +169,118 @@ uint8_t ssc_write_6_shim(struct scsi_cmd *cmd) {
 	if (!lu_ssc->pm->check_restrictions(cmd))
 		return SAM_STAT_CHECK_CONDITION;
 
+	memcpy(sockcmd.cdb, cmd->scb, sizeof(uint8_t) * cmd->scb_len); // possibly a way to avoid this copy?
+	memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
+	sockcmd.type = HOST_WR_CMD;
+	sockcmd.sz = sz;
+	sockcmd.count = count;
+	sockcmd.id = ++cmd_id;
+	sockcmd.serialNo = cmd->dbuf_p->serialNo;
+
 	if (OK_to_write) {
 		/* TODO: handle edge cases that writeBlock() handles */
-		writeBlocksRequest(cmd, sz);
-
-		/* If sam_stat != SAM_STAT_GOOD, return */
-		if (cmd->dbuf_p->sam_stat)
-			return cmd->dbuf_p->sam_stat;
+		return submit_to_shim(&sockcmd, &sockstat, cmd->dbuf_p);
 	}
 
 	return SAM_STAT_GOOD;
 }
 
-// LBP and compression are ignored
-void writeBlocksRequest(struct scsi_cmd *cmd, uint32_t src_sz) {
+uint8_t ssc_read_6_shim(struct scsi_cmd *cmd) {
+	uint8_t *cdb = cmd->scb;
+	uint8_t *sam_stat = &cmd->dbuf_p->sam_stat;
+	int count;
+	int sz;
+	struct s_sd sd;
+	struct priv_lu_ssc *lu_ssc;
+
 	struct mhvtl_socket_cmd sockcmd;
 	struct mhvtl_socket_stat sockstat;
 
-	memcpy(sockcmd.cdb, cmd->scb, sizeof(uint8_t) * cmd->scb_len); // possibly a way to avoid this copy?
+	current_state = MHVTL_STATE_READING;
+
+	opcode_6_params(cmd, &count, &sz);
+	MHVTL_DBG(3, "%s(): %d block%s of %d bytes (%ld) **",
+				__func__,
+				count, count == 1 ? "" : "s",
+				sz,
+				(long)cmd->dbuf_p->serialNo);
+
+	/* If both FIXED & SILI bits set, invalid combo.. */
+	if ((cdb[1] & (SILI | FIXED_BLOCK)) == (SILI | FIXED_BLOCK)) {
+		MHVTL_DBG(1, "Suppress ILI and Fixed block "
+					"read not allowed by SSC3");
+		sd.byte0 = SKSV | CD;
+		sd.field_pointer = 1;
+		sam_illegal_request(E_INVALID_FIELD_IN_CDB, &sd, sam_stat);
+		return SAM_STAT_CHECK_CONDITION;
+	}
+
+	lu_ssc = cmd->lu->lu_private;
+
+	// check load status before attempting to read
+	switch (lu_ssc->load_status) {
+		case TAPE_LOADING:
+			sam_not_ready(E_BECOMING_READY, sam_stat);
+			return SAM_STAT_CHECK_CONDITION;
+			break;
+		case TAPE_LOADED:
+			if (mam.MediumType == MEDIA_TYPE_CLEAN) {
+				MHVTL_DBG(3, "Cleaning cart loaded");
+				sam_not_ready(E_CLEANING_CART_INSTALLED,
+									sam_stat);
+				return SAM_STAT_CHECK_CONDITION;
+			}
+			break;
+		case TAPE_UNLOADED:
+			MHVTL_DBG(3, "No media loaded");
+			sam_not_ready(E_MEDIUM_NOT_PRESENT, sam_stat);
+			return SAM_STAT_CHECK_CONDITION;
+			break;
+		default:
+			MHVTL_DBG(1, "Media format corrupt");
+			sam_not_ready(E_MEDIUM_FMT_CORRUPT, sam_stat);
+			return SAM_STAT_CHECK_CONDITION;
+			break;
+	}
+
+	// populate packet data
+	memcpy(sockcmd.cdb, cmd->scb, sizeof(uint8_t) * cmd->scb_len);
 	memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
-	sockcmd.type = HOST_WR_CMD;
-	sockcmd.sz = src_sz;
-	sockcmd.count = cmd->dbuf_p->sz / src_sz;
+	sockcmd.type = HOST_RD_CMD;
+	sockcmd.sz = sz;
+	sockcmd.count = count;
 	sockcmd.id = ++cmd_id;
 	sockcmd.serialNo = cmd->dbuf_p->serialNo;
 
-	/* Attempt write by requesting over socket */
-	if (send(sockfd, &sockcmd, sizeof(sockcmd), 0) < 0) {
-		MHVTL_DBG(1, "failed to send packet");
-		sam_medium_error(E_WRITE_ERROR, &cmd->dbuf_p->sam_stat);
-		is_connected = 0;
-		return;
-	}
+	return submit_to_shim(&sockcmd, &sockstat, cmd->dbuf_p);
+}
 
-	/* Wait for status */
-	if (recv(sockfd, &sockstat, sizeof(sockstat), 0) < 0) {
-		MHVTL_DBG(1, "failed to receive packet");
-		sam_medium_error(E_WRITE_ERROR, &cmd->dbuf_p->sam_stat);
-		is_connected = 0;
-		return;
-	}
+uint8_t ssc_locate_shim(struct scsi_cmd *cmd) {
+	uint32_t blk_no;
+	struct mhvtl_socket_cmd sockcmd;
+	struct mhvtl_socket_stat sockstat;
 
-	/* Check status */
-	switch (sockstat.sense_key) {
-		case UNIT_ATTENTION:
-			sam_unit_attention(sockstat.sense_ascq, &cmd->dbuf_p->sam_stat);
-			break;
-		case NOT_READY:
-			sam_not_ready(sockstat.sense_ascq, &cmd->dbuf_p->sam_stat);
-			break;
-		case ILLEGAL_REQUEST:
-			sam_illegal_request(sockstat.sense_ascq, &sockstat.sense_sd, &cmd->dbuf_p->sam_stat);
-			break;
-		case MEDIUM_ERROR:
-			sam_medium_error(sockstat.sense_ascq, &cmd->dbuf_p->sam_stat);
-			break;
-		case BLANK_CHECK:
-			sam_blank_check(sockstat.sense_ascq, &cmd->dbuf_p->sam_stat);
-			break;
-		case DATA_PROTECT:
-			sam_data_protect(sockstat.sense_ascq, &cmd->dbuf_p->sam_stat);
-			break;
-		case HARDWARE_ERROR:
-			sam_hardware_error(sockstat.sense_ascq, &cmd->dbuf_p->sam_stat);
-			break;
-		case SD_ILI:
-		case SD_FILEMARK:
-		case (VOLUME_OVERFLOW | SD_EOM):
-		case SD_EOM:
-		case NO_SENSE:
-			if (sockstat.sense_key || sockstat.sense_ascq) // if not both NO_SENSE and NO_ADDITIONAL_SENSE
-				sam_no_sense(sockstat.sense_key, sockstat.sense_ascq, &cmd->dbuf_p->sam_stat);
-			break;
-		default:
-			break;
-	}
+	current_state = MHVTL_STATE_LOCATE;
+
+	MHVTL_DBG(1, "LOCATE %d (%ld) **", (cmd->scb[0] == LOCATE_16) ? 16 : 10,
+			(long)cmd->dbuf_p->serialNo);
+
+	blk_no = (cmd->scb[0] == LOCATE_16) ?
+		get_unaligned_be64(&cmd->scb[4]) : get_unaligned_be32(&cmd->scb[3]);
+
+	// populate packet data
+	memcpy(sockcmd.cdb, cmd->scb, sizeof(uint8_t) * cmd->scb_len);
+	memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
+	sockcmd.type = HOST_LOCATE_CMD;
+	sockcmd.count = blk_no;
+	sockcmd.id = ++cmd_id;
+	sockcmd.serialNo = cmd->dbuf_p->serialNo;
+
+	/* If we want to seek closer to beginning of file than
+	 * we currently are, rewind and seek from there
+	 */
+	MHVTL_DBG(2, "Current blk: %d, seek: %d",
+					c_pos->blk_number, blk_no);
+
+	return submit_to_shim(&sockcmd, &sockstat, cmd->dbuf_p);
 }
