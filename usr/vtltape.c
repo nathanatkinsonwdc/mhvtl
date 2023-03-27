@@ -2528,7 +2528,8 @@ int main(int argc, char *argv[])
 	child_cleanup = not_started;
 
 	/* initialize shim shared memory */
-	shm_init(&buf, lu_ssc.bufsize);
+	// shm_init(&buf, lu_ssc.bufsize);
+	shm_init(&buf, SHM_SZ);
 	if (buf == NULL) {
 		perror("Problems allocating memory");
 		exit(1);
