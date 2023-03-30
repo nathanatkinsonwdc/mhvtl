@@ -9,7 +9,7 @@ Before=shutdown.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-Environment=VTL_DEBUG="0"
+Environment=VTL_DEBUG
 EnvironmentFile=-@CONF_PATH@/mhvtl.conf
 ExecStart=/sbin/modprobe mhvtl opts=${VTL_DEBUG}
 ExecStart=/sbin/modprobe sg

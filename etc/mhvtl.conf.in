@@ -9,10 +9,10 @@ MHVTL_HOME_PATH=@HOME_PATH@
 CAPACITY=500
 
 # Set default verbosity [0|1|2|3]
-VERBOSE=1
+VERBOSE=3
 
 # Set kernel module debugging [0|1]
-VTL_DEBUG=0
+VTL_DEBUG=1
 
 # vtltape and vtllibrary debugging [Blank or -d]
 #DAEMON_DEBUG=-d
