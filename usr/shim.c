@@ -102,35 +102,38 @@ static uint8_t submit_to_shim(struct mhvtl_socket_cmd *sockcmd, struct mhvtl_soc
 	MHVTL_DBG(2, "SHM POST CONTENTS: %s", (char *)dbuf_p->data);
 
 	// Check status
-	switch (sockstat->sense_key) {
+	uint8_t sense_key = sockstat->sense[2] & 0x0f;
+	uint16_t sense_asc_ascq = sockstat->sense[12] << 0x08 | sockstat->sense[13];
+	struct s_sd sense_sd = {sockstat->sense[15], sockstat->sense[16] << 0x08 | sockstat->sense[17]};
+	switch (sense_key) {
 		case UNIT_ATTENTION:
-			sam_unit_attention(sockstat->sense_ascq, &dbuf_p->sam_stat);
+			sam_unit_attention(sense_asc_ascq, &dbuf_p->sam_stat);
 			break;
 		case NOT_READY:
-			sam_not_ready(sockstat->sense_ascq, &dbuf_p->sam_stat);
+			sam_not_ready(sense_asc_ascq, &dbuf_p->sam_stat);
 			break;
 		case ILLEGAL_REQUEST:
-			sam_illegal_request(sockstat->sense_ascq, &sockstat->sense_sd, &dbuf_p->sam_stat);
+			sam_illegal_request(sense_asc_ascq, &sense_sd, &dbuf_p->sam_stat);
 			break;
 		case MEDIUM_ERROR:
-			sam_medium_error(sockstat->sense_ascq, &dbuf_p->sam_stat);
+			sam_medium_error(sense_asc_ascq, &dbuf_p->sam_stat);
 			break;
 		case BLANK_CHECK:
-			sam_blank_check(sockstat->sense_ascq, &dbuf_p->sam_stat);
+			sam_blank_check(sense_asc_ascq, &dbuf_p->sam_stat);
 			break;
 		case DATA_PROTECT:
-			sam_data_protect(sockstat->sense_ascq, &dbuf_p->sam_stat);
+			sam_data_protect(sense_asc_ascq, &dbuf_p->sam_stat);
 			break;
 		case HARDWARE_ERROR:
-			sam_hardware_error(sockstat->sense_ascq, &dbuf_p->sam_stat);
+			sam_hardware_error(sense_asc_ascq, &dbuf_p->sam_stat);
 			break;
 		case SD_ILI:
 		case SD_FILEMARK:
 		case (VOLUME_OVERFLOW | SD_EOM):
 		case SD_EOM:
 		case NO_SENSE:
-			if (sockstat->sense_key || sockstat->sense_ascq) // if not both NO_SENSE and NO_ADDITIONAL_SENSE
-				sam_no_sense(sockstat->sense_key, sockstat->sense_ascq, &dbuf_p->sam_stat);
+			if (sense_key || sense_asc_ascq) // if not both NO_SENSE and NO_ADDITIONAL_SENSE
+				sam_no_sense(sense_key, sense_asc_ascq, &dbuf_p->sam_stat);
 			break;
 		default:
 			break;
