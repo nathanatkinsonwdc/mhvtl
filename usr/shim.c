@@ -81,6 +81,8 @@ void shm_close(uint8_t *dbuf) {
 }
 
 static uint8_t submit_to_shim(struct mhvtl_socket_cmd *sockcmd, struct mhvtl_socket_stat *sockstat, struct mhvtl_ds *dbuf_p) {
+	MHVTL_DBG(2, "SHM PRE CONTENTS: %s", (char *)dbuf_p->data);
+	
 	// Request command completion over socket
 	if (send(sockfd, sockcmd, sizeof(struct mhvtl_socket_cmd), 0) < 0) {
 		MHVTL_DBG(1, "failed to send packet");
@@ -96,6 +98,8 @@ static uint8_t submit_to_shim(struct mhvtl_socket_cmd *sockcmd, struct mhvtl_soc
 		is_connected = 0;
 		return dbuf_p->sam_stat;
 	}
+
+	MHVTL_DBG(2, "SHM POST CONTENTS: %s", (char *)dbuf_p->data);
 
 	// Check status
 	switch (sockstat->sense_key) {
@@ -131,6 +135,10 @@ static uint8_t submit_to_shim(struct mhvtl_socket_cmd *sockcmd, struct mhvtl_soc
 		default:
 			break;
 	}
+
+	MHVTL_DBG(2, "SAM_STAT: 0x%x", (int)dbuf_p->sam_stat);
+
+	dbuf_p->sz = sockstat->sz;
 
 	return dbuf_p->sam_stat;
 }
@@ -203,7 +211,7 @@ uint8_t ssc_read_6_shim(struct scsi_cmd *cmd) {
 	current_state = MHVTL_STATE_READING;
 
 	opcode_6_params(cmd, &count, &sz);
-	MHVTL_DBG(3, "%s(): %d block%s of %d bytes (%ld) **",
+	MHVTL_DBG(1, "%s(): %d block%s of %d bytes (%ld) **",
 				__func__,
 				count, count == 1 ? "" : "s",
 				sz,

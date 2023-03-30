@@ -28,6 +28,7 @@ struct mhvtl_socket_cmd {
 
 struct mhvtl_socket_stat {
     uint16_t id; // packet ID
+    uint32_t sz; // bytes processed
     uint8_t sense_key;
     uint32_t sense_ascq; // sense additional field
     struct s_sd sense_sd;
