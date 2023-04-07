@@ -11,23 +11,43 @@
 #define MHVTL_SOCK_NAME "/tmp/mhvtl.sock"
 
 typedef enum { 
-    FREE, HOST_CMD_NEW, HOST_WR_CMD, 
-    HOST_RD_CMD, STREAM_BUFFER_REQUEST, STREAM_SEGMENT_REQUEST, 
-    CONTAINER, HOST_OBJECT, SUPERBLOCK, 
-    WRITE_FLUSH, MAP_UPDATE, HOST_LOCATE_CMD
-} shimTaskType;
+    // Reserved
+    FREE,
+
+    // Reserved
+    CONTAINER, PARITY_CONTAINER, PAD_CONTAINER, SUPERBLOCK,
+    HOST_OBJECT,
+
+    // Host commands
+    HOST_CMD_NEW, HOST_WR_CMD, HOST_WRFM_CMD,
+    HOST_RD_CMD, HOST_REWIND_CMD, HOST_SPACE_CMD,
+    HOST_LOAD_CMD, HOST_UNLOAD_CMD, HOST_LOCATE_CMD,
+
+    // Reserved
+    WRITE_FLUSH, READ_CACHE_DISCARD,
+
+    // Reserved
+    STREAM_BUFFER_REQUEST, STREAM_SEGMENT_REQUEST, MAP_UPDATE
+    
+} shimTaskType; // TODO: remove reserved fields
+
+typedef enum {
+    SUCCESS, CHECK
+} shimStatus;
 
 struct mhvtl_socket_cmd {
-    uint16_t id; // packet ID
-    shimTaskType type; // backend task type
-    uint32_t sz; // block size
-    uint32_t count; // block count
+    uint16_t id;                    // packet ID
+    shimTaskType type;              // derived from scsi opcode
+    uint32_t sz;                    // block size
+    uint32_t count;                 // block count
+    uint32_t mediaBarcode;          // used for load command
     unsigned long long serialNo;
-    uint8_t cdb[MAX_COMMAND_SIZE]; // scsi cdb
+    uint8_t cdb[MAX_COMMAND_SIZE];  // scsi cdb
 };
 
 struct mhvtl_socket_stat {
     uint16_t id; // packet ID
+    shimStatus completionStatus;
     uint8_t sense[SENSE_BUF_SIZE];
 };
 

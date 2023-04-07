@@ -31,6 +31,7 @@
 
 unsigned int cmd_id = 0;
 extern uint8_t sense[SENSE_BUF_SIZE];
+extern struct MAM mam;
 
 // socket backend is responsible for listening server, including sockpath link/unlink
 // uses UNIX domain stream sockets
@@ -81,7 +82,10 @@ void shm_close(uint8_t *dbuf) {
 	munmap((void *)dbuf, SHM_SZ);
 }
 
+
 static uint8_t submit_to_shim(struct mhvtl_socket_cmd *sockcmd, struct mhvtl_socket_stat *sockstat, struct mhvtl_ds *dbuf_p) {
+	MHVTL_DBG(2, "PRE SHIM CONTENTS: %s", (char *) dbuf_p->data);
+	
 	// Request command completion over socket
 	if (send(sockfd, sockcmd, sizeof(struct mhvtl_socket_cmd), 0) < 0) {
 		MHVTL_DBG(1, "failed to send packet");
@@ -98,6 +102,8 @@ static uint8_t submit_to_shim(struct mhvtl_socket_cmd *sockcmd, struct mhvtl_soc
 		return dbuf_p->sam_stat;
 	}
 
+	MHVTL_DBG(2, "POST SHIM CONTENTS: %s", (char *) dbuf_p->data);
+
 	// Verify status matches requested packet
 	if (sockcmd->id != sockstat->id) {
 		MHVTL_DBG(1, "packet mismatch; expected ID %d but got %d", sockcmd->id, sockstat->id);
@@ -107,7 +113,7 @@ static uint8_t submit_to_shim(struct mhvtl_socket_cmd *sockcmd, struct mhvtl_soc
 	}
 
 	// Set status
-	dbuf_p->sam_stat = (sockstat->sense[0] & SD_VALID) ? SAM_STAT_CHECK_CONDITION : SAM_STAT_GOOD;
+	dbuf_p->sam_stat = (sockstat->completionStatus == SUCCESS) ? SAM_STAT_GOOD : SAM_STAT_CHECK_CONDITION;
 	memcpy(sense, sockstat->sense, sizeof(sense));
 
 	return dbuf_p->sam_stat;
@@ -134,6 +140,14 @@ uint8_t ssc_write_6_shim(struct scsi_cmd *cmd) {
 				sz,
 				(long)cmd->dbuf_p->serialNo);
 
+	char cdb[128] = "CMD->SCB: ";
+	char hex[4];
+	for(int i=0; i<6; ++i) {
+		sprintf(hex, " %02x", cmd->scb[i]);
+		strcat(cdb, hex);
+	}
+	MHVTL_DBG(3, "%s", cdb);
+
 	if ((sz * count) > lu_ssc->bufsize)
 		MHVTL_DBG(1, "Fatal: bufsize %d, requested write of %d bytes", lu_ssc->bufsize, sz);
 
@@ -154,14 +168,40 @@ uint8_t ssc_write_6_shim(struct scsi_cmd *cmd) {
 	sockcmd.id = ++cmd_id;
 	sockcmd.serialNo = cmd->dbuf_p->serialNo;
 
+	memset(cdb, 0, sizeof(cdb));
+	strcpy(cdb, "SOCKCMD.CDB: ");
+	for(int i=0; i<6; ++i) {
+		sprintf(hex, " %02x", sockcmd.cdb[i]);
+		strcat(cdb, hex);
+	}
+	MHVTL_DBG(3, "%s", cdb);
+
 	MHVTL_DBG(1, "SHIM: %d block%s of %d bytes (%ld) **",
 				sockcmd.count, sockcmd.count == 1 ? "" : "s",
 				sockcmd.sz,
 				(long)sockcmd.serialNo);
 
 	if (OK_to_write) {
-		/* TODO: handle edge cases that writeBlock() handles */
-		return submit_to_shim(&sockcmd, &sockstat, cmd->dbuf_p);
+		submit_to_shim(&sockcmd, &sockstat, cmd->dbuf_p);
+
+		uint8_t key = sense[2] & 0x0f;
+		uint8_t data_format = sense[2] & 0xf0;
+		if (key != NO_SENSE) {
+			if (key == VOLUME_OVERFLOW) {
+				mam.remaining_capacity = 0L;
+				MHVTL_DBG(1, "End of Medium - VOLUME_OVERFLOW/EOM");
+			} else {
+				set_TapeAlert(cmd->lu, (uint64_t)(TA_HARD | TA_WRITE));
+			}
+		} else if ((lu_ssc->pm->drive_supports_early_warning) && (data_format == SD_EOM)) {
+			MHVTL_DBG(1, "End of Medium - Early Warning");
+		} else if ((lu_ssc->pm->drive_supports_prog_early_warning) && (data_format == SD_EOM)) {
+			MHVTL_DBG(1, "End of Medium - Programmable Early Warning");
+		}
+
+		// TODO: pass current position in status so mam.remaining_capacity can be updated
+		
+		return cmd->dbuf_p->sam_stat;
 	}
 
 	return SAM_STAT_GOOD;
@@ -226,7 +266,7 @@ uint8_t ssc_read_6_shim(struct scsi_cmd *cmd) {
 	}
 
 	// populate packet data
-	memcpy(sockcmd.cdb, cmd->scb, sizeof(uint8_t) * cmd->scb_len);
+	memcpy(sockcmd.cdb, cdb, sizeof(uint8_t) * cmd->scb_len);
 	memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
 	sockcmd.type = HOST_RD_CMD;
 	sockcmd.sz = sz;
@@ -235,7 +275,12 @@ uint8_t ssc_read_6_shim(struct scsi_cmd *cmd) {
 	sockcmd.serialNo = cmd->dbuf_p->serialNo;
 
 	submit_to_shim(&sockcmd, &sockstat, cmd->dbuf_p);
-	cmd->dbuf_p->sz = get_unaligned_be32(&sense[3]);
+	
+
+	cmd->dbuf_p->sz = (sockstat.completionStatus == SUCCESS) ? sz*count : sz*(count-get_unaligned_be32(&sense[3]));
+
+	MHVTL_DBG(2, "sz: %d, count: %d, remaining: %d", sz, count, get_unaligned_be32(&sense[3]));
+	MHVTL_DBG(2, "read %d bytes", cmd->dbuf_p->sz);
 
 	return cmd->dbuf_p->sam_stat;
 }
