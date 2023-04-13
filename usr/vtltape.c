@@ -1495,6 +1495,8 @@ static int processMessageQ(struct q_msg *msg, uint8_t *sam_stat)
 	char *z;
 	struct lu_phy_attr *lu;
 	int pcl_len;
+	struct mhvtl_socket_cmd sockcmd;
+	struct mhvtl_socket_stat sockstat;
 
 	lu = lu_ssc.pm->lu;
 
@@ -1523,6 +1525,16 @@ static int processMessageQ(struct q_msg *msg, uint8_t *sam_stat)
 				sprintf(s, "%s: %s", msg_load_failed, pcl);
 			} else {
 				loadTape(pcl, sam_stat);
+
+				memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
+				sockcmd.type = HOST_LOAD_CMD;
+
+				// make sure barcode ends with 2 numbers
+				const char *lastDigits = &pcl[strlen(pcl)-2];
+				sockcmd.mediaBarcode = atoi(lastDigits) & 0xf;
+
+				submit_to_shim(&sockcmd, &sockstat, sam_stat, NULL);
+
 				sprintf(s, "%s: %s",
 					(lu_ssc.load_status == TAPE_UNLOADED) ? msg_load_failed : msg_load_ok,
 					pcl);
@@ -1543,6 +1555,16 @@ static int processMessageQ(struct q_msg *msg, uint8_t *sam_stat)
 			MHVTL_DBG(2, "A tape is already mounted");
 		} else {
 			loadTape(pcl, sam_stat);
+
+			memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
+			sockcmd.type = HOST_LOAD_CMD;
+
+			// make sure barcode ends with 2 numbers
+			const char *lastDigits = &pcl[strlen(pcl)-2];
+			sockcmd.mediaBarcode = atoi(lastDigits) & 0xf;
+
+			submit_to_shim(&sockcmd, &sockstat, sam_stat, NULL);
+
 		}
 		/* Prevent a manual load, and the library moving another in it's place
 		 * Feature: There is no logic to remove the tape from 'mouth' of drive
@@ -1576,6 +1598,12 @@ static int processMessageQ(struct q_msg *msg, uint8_t *sam_stat)
 
 	if (!strncmp(msg->text, "unload", 6)) {
 		unloadTape(FALSE, sam_stat);
+
+		memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
+		sockcmd.type = HOST_UNLOAD_CMD;
+
+		submit_to_shim(&sockcmd, &sockstat, sam_stat, NULL);
+
 		send_msg_and_log(msg_unload_ok, msg->snd_id);
 		free(lu_ssc.barcode);
 		lu_ssc.barcode = NULL;
@@ -1819,7 +1847,7 @@ static struct device_type_template ssc_ops = {
 	.ops	= {
 		/* 0x00 -> 0x0f */
 		{ssc_tur,},
-		{ssc_rewind,},
+		{ssc_rewind_shim,},
 		{spc_illegal_op,},
 		{spc_request_sense,},
 		{ssc_format_medium,},
@@ -1837,8 +1865,8 @@ static struct device_type_template ssc_ops = {
 		{spc_illegal_op,},
 
 		/* 0x10 -> 0x1f */
-		{ssc_write_filemarks,},
-		{ssc_space_6,},
+		{ssc_write_filemarks_shim,},
+		{ssc_space_6_shim,},
 		{spc_inquiry,},
 		{ssc_verify_6,},
 		{spc_illegal_op,},
@@ -1849,7 +1877,7 @@ static struct device_type_template ssc_ops = {
 		{spc_illegal_op,},
 		{ssc_erase,},
 		{spc_mode_sense,},
-		{ssc_load_unload,},
+		{ssc_load_unload_shim,},
 		{ssc_recv_diagnostics,},
 		{ssc_send_diagnostics,},
 		{ssc_allow_prevent_removal,},
@@ -1868,7 +1896,7 @@ static struct device_type_template ssc_ops = {
 		{spc_illegal_op,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
-		{ssc_locate,},
+		{ssc_locate_shim,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
@@ -1879,7 +1907,7 @@ static struct device_type_template ssc_ops = {
 		{spc_illegal_op,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
-		{ssc_read_position,},
+		{ssc_read_position_shim,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
@@ -1954,8 +1982,8 @@ static struct device_type_template ssc_ops = {
 
 		/* 0x90 -> 0x9f */
 		{spc_illegal_op,},
-		{ssc_space_16,},
-		{ssc_locate,},
+		{ssc_space_16_shim,},
+		{ssc_locate_shim,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},

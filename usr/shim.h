@@ -11,25 +11,25 @@
 #define MHVTL_SOCK_NAME "/tmp/mhvtl.sock"
 
 typedef enum { 
-    // Reserved
+    // State in task free pool
     FREE,
 
-    // Reserved
+    // Data carriers
     CONTAINER, PARITY_CONTAINER, PAD_CONTAINER, SUPERBLOCK,
     HOST_OBJECT,
 
     // Host commands
-    HOST_CMD_NEW, HOST_WR_CMD, HOST_WRFM_CMD,
+    HOST_CMD_NEW, HOST_WR_CMD, HOST_WRFM_CMD, HOST_READ_POS,
     HOST_RD_CMD, HOST_REWIND_CMD, HOST_SPACE_CMD,
     HOST_LOAD_CMD, HOST_UNLOAD_CMD, HOST_LOCATE_CMD,
 
-    // Reserved
+    // Internal commands
     WRITE_FLUSH, READ_CACHE_DISCARD,
 
-    // Reserved
+    // Internal requests
     STREAM_BUFFER_REQUEST, STREAM_SEGMENT_REQUEST, MAP_UPDATE
     
-} shimTaskType; // TODO: remove reserved fields
+} shimTaskType;
 
 typedef enum {
     SUCCESS, CHECK
@@ -49,6 +49,7 @@ struct mhvtl_socket_stat {
     uint16_t id; // packet ID
     shimStatus completionStatus;
     uint8_t sense[SENSE_BUF_SIZE];
+    uint64_t mediaBytesRemaining;
 };
 
 extern struct MAM mam;
@@ -61,8 +62,15 @@ extern int is_connected;
 int socket_init(const char *sockpath);
 void shm_init(uint8_t **dbuf, size_t sz);
 void shm_close(uint8_t *dbuf);
+uint8_t submit_to_shim(struct mhvtl_socket_cmd *sockcmd, struct mhvtl_socket_stat *sockstat, unsigned char *sam_stat, void *data);
 uint8_t ssc_write_6_shim(struct scsi_cmd *cmd);
 uint8_t ssc_read_6_shim(struct scsi_cmd *cmd);
 uint8_t ssc_locate_shim(struct scsi_cmd *cmd);
+uint8_t ssc_write_filemarks_shim(struct scsi_cmd *cmd);
+uint8_t ssc_rewind_shim(struct scsi_cmd *cmd);
+uint8_t ssc_read_position_shim(struct scsi_cmd *cmd);
+uint8_t ssc_space_6_shim(struct scsi_cmd *cmd);
+uint8_t ssc_space_16_shim(struct scsi_cmd *cmd);
+uint8_t ssc_load_unload_shim(struct scsi_cmd *cmd);
 
 #endif
