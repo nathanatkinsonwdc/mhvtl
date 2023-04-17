@@ -89,7 +89,7 @@ uint8_t submit_to_shim(struct mhvtl_socket_cmd *sockcmd, struct mhvtl_socket_sta
 		MHVTL_DBG(1, "failed to send packet");
 		sam_medium_error(E_UNKNOWN_FORMAT, sam_stat);
 		is_connected = 0;
-		return sam_stat;
+		return *sam_stat;
 	}
 
 	// Wait for status
@@ -352,7 +352,6 @@ uint8_t ssc_write_filemarks_shim(struct scsi_cmd *cmd) {
 uint8_t ssc_rewind_shim(struct scsi_cmd *cmd) {
 	struct priv_lu_ssc *lu_priv;
 	uint8_t *sam_stat;
-	int retval;
 	struct mhvtl_socket_cmd sockcmd;
 	struct mhvtl_socket_stat sockstat;
 
@@ -461,7 +460,7 @@ uint8_t ssc_space_6_shim(struct scsi_cmd *cmd) {
 
 		sd.byte0 = SKSV | CD | BPV | code;
 		sd.field_pointer = 1;
-		sam_illegal_request(E_INVALID_FIELD_IN_PARMS, &sd, cmd->dbuf_p->sam_stat);
+		sam_illegal_request(E_INVALID_FIELD_IN_PARMS, &sd, &cmd->dbuf_p->sam_stat);
 		return SAM_STAT_CHECK_CONDITION;
 	}
 
@@ -492,7 +491,7 @@ uint8_t ssc_space_16_shim(struct scsi_cmd *cmd) {
 
 		sd.byte0 = SKSV | CD | BPV | code;
 		sd.field_pointer = 1;
-		sam_illegal_request(E_INVALID_FIELD_IN_PARMS, &sd, cmd->dbuf_p->sam_stat);
+		sam_illegal_request(E_INVALID_FIELD_IN_PARMS, &sd, &cmd->dbuf_p->sam_stat);
 		return SAM_STAT_CHECK_CONDITION;
 	}
 
