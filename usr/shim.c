@@ -568,9 +568,9 @@ uint8_t ssc_load_unload_shim(struct scsi_cmd *cmd) {
 				sockcmd.id = ++cmd_id;
 				sockcmd.serialNo = cmd->dbuf_p->serialNo;
 
-				// make sure barcode ends with 2 numbers
-				const char *lastDigits = &lu_priv->barcode[strlen(lu_priv->barcode)-2];
-				sockcmd.mediaBarcode = atoi(lastDigits) & 0xf;
+				// make sure barcode ends in a unique value
+				const char *lastDigits = &lu_priv->barcode[strlen(lu_priv->barcode)-1];
+				sockcmd.mediaBarcode = (int)lastDigits & 0xff;
 
 				submit_to_shim(&sockcmd, &sockstat, sam_stat, cmd->dbuf_p->data);
 
