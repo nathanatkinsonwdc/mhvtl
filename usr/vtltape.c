@@ -1847,6 +1847,7 @@ static struct device_type_template ssc_ops = {
 	.ops	= {
 		/* 0x00 -> 0x0f */
 		{ssc_tur,},
+		// {ssc_rewind,},
 		{ssc_rewind_shim,},
 		{spc_illegal_op,},
 		{spc_request_sense,},
@@ -1865,8 +1866,10 @@ static struct device_type_template ssc_ops = {
 		{spc_illegal_op,},
 
 		/* 0x10 -> 0x1f */
+		// {ssc_write_filemarks,},
 		{ssc_write_filemarks_shim,},
-		{ssc_space_6_shim,},
+		{ssc_space_6,},
+		// {ssc_space_6_shim,},
 		{spc_inquiry,},
 		{ssc_verify_6,},
 		{spc_illegal_op,},
@@ -1877,6 +1880,7 @@ static struct device_type_template ssc_ops = {
 		{spc_illegal_op,},
 		{ssc_erase,},
 		{spc_mode_sense,},
+		// {ssc_load_unload,},
 		{ssc_load_unload_shim,},
 		{ssc_recv_diagnostics,},
 		{ssc_send_diagnostics,},
@@ -1896,7 +1900,8 @@ static struct device_type_template ssc_ops = {
 		{spc_illegal_op,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
-		{ssc_locate_shim,},
+		{ssc_locate,},
+		// {ssc_locate_shim,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
@@ -1907,7 +1912,8 @@ static struct device_type_template ssc_ops = {
 		{spc_illegal_op,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
-		{ssc_read_position_shim,},
+		{ssc_read_position,},
+		// {ssc_read_position_shim,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
@@ -1982,8 +1988,10 @@ static struct device_type_template ssc_ops = {
 
 		/* 0x90 -> 0x9f */
 		{spc_illegal_op,},
-		{ssc_space_16_shim,},
-		{ssc_locate_shim,},
+		{ssc_space_16,},
+		// {ssc_space_16_shim,},
+		{ssc_locate,},
+		// {ssc_locate_shim,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
