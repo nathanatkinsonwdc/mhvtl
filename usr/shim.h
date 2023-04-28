@@ -16,7 +16,7 @@ typedef enum {
 
     // Data carriers
     CONTAINER, PARITY_CONTAINER, PAD_CONTAINER, SUPERBLOCK,
-    HOST_OBJECT,
+    PAD_SUPERBLOCK, HOST_OBJECT,
 
     // Host commands
     HOST_CMD_NEW, HOST_WR_CMD, HOST_WRFM_CMD, HOST_READ_POS,

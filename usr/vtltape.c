@@ -1528,7 +1528,6 @@ static int processMessageQ(struct q_msg *msg, uint8_t *sam_stat)
 
 				memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
 				sockcmd.type = HOST_LOAD_CMD;
-
 				// make sure barcode ends with 2 numbers
 				const char *lastDigits = &pcl[strlen(pcl)-2];
 				sockcmd.mediaBarcode = atoi(lastDigits) & 0xf;
@@ -1868,8 +1867,8 @@ static struct device_type_template ssc_ops = {
 		/* 0x10 -> 0x1f */
 		// {ssc_write_filemarks,},
 		{ssc_write_filemarks_shim,},
-		{ssc_space_6,},
-		// {ssc_space_6_shim,},
+		// {ssc_space_6,},
+		{ssc_space_6_shim,},
 		{spc_inquiry,},
 		{ssc_verify_6,},
 		{spc_illegal_op,},
@@ -1900,8 +1899,8 @@ static struct device_type_template ssc_ops = {
 		{spc_illegal_op,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
-		{ssc_locate,},
-		// {ssc_locate_shim,},
+		// {ssc_locate,},
+		{ssc_locate_shim,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
@@ -1912,8 +1911,8 @@ static struct device_type_template ssc_ops = {
 		{spc_illegal_op,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
-		{ssc_read_position,},
-		// {ssc_read_position_shim,},
+		// {ssc_read_position,},
+		{ssc_read_position_shim,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
@@ -1988,10 +1987,10 @@ static struct device_type_template ssc_ops = {
 
 		/* 0x90 -> 0x9f */
 		{spc_illegal_op,},
-		{ssc_space_16,},
-		// {ssc_space_16_shim,},
-		{ssc_locate,},
-		// {ssc_locate_shim,},
+		// {ssc_space_16,},
+		{ssc_space_16_shim,},
+		// {ssc_locate,},
+		{ssc_locate_shim,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
 		{spc_illegal_op,},
