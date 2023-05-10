@@ -4,11 +4,12 @@
 #include "vtl_common.h"
 #include "vtllib.h"
 
-#define SHM_NAME "/mhvtl_dbuf"
-#define SHM_SZ 16 * 1024 * 1024
-#define SHM_MODE 0666
-#define SHM_OFLAGS O_RDWR | O_CREAT
+#define SHM_NAME        "/mhvtl_dbuf"
+#define SHM_SZ          16 * 1024 * 1024
+#define SHM_MODE        0666
+#define SHM_OFLAGS      O_RDWR | O_CREAT
 #define MHVTL_SOCK_NAME "/tmp/mhvtl.sock"
+#define MAX_SERIAL_LEN  64
 
 typedef enum { 
     // State in task free pool
@@ -36,13 +37,12 @@ typedef enum {
 } shimStatus;
 
 struct mhvtl_socket_cmd {
-    uint16_t id;                    // packet ID
-    shimTaskType type;              // derived from scsi opcode
-    uint32_t sz;                    // block size
-    uint32_t count;                 // block count
-    uint32_t mediaBarcode;          // used for load command
-    unsigned long long serialNo;
-    uint8_t cdb[MAX_COMMAND_SIZE];  // scsi cdb
+    uint16_t id;                        // packet ID
+    shimTaskType type;                  // derived from scsi opcode
+    uint32_t sz;                        // block size
+    uint32_t count;                     // block count
+    char serial[MAX_SERIAL_LEN];        // media serial barcode
+    uint8_t cdb[MAX_COMMAND_SIZE];      // scsi cdb
 };
 
 struct mhvtl_socket_stat {

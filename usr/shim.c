@@ -162,12 +162,11 @@ uint8_t ssc_write_6_shim(struct scsi_cmd *cmd) {
 	sockcmd.sz = sz;
 	sockcmd.count = count;
 	sockcmd.id = ++cmd_id;
-	sockcmd.serialNo = cmd->dbuf_p->serialNo;
 
 	MHVTL_DBG(2, "SHIM: %d block%s of %d bytes (%ld) **",
 				sockcmd.count, sockcmd.count == 1 ? "" : "s",
 				sockcmd.sz,
-				(long)sockcmd.serialNo);
+				(long)cmd->dbuf_p->serialNo);
 
 	if (OK_to_write) {
 		submit_to_shim(&sockcmd, &sockstat, &cmd->dbuf_p->sam_stat, cmd->dbuf_p->data);
@@ -260,7 +259,6 @@ uint8_t ssc_read_6_shim(struct scsi_cmd *cmd) {
 	sockcmd.sz = sz;
 	sockcmd.count = count;
 	sockcmd.id = ++cmd_id;
-	sockcmd.serialNo = cmd->dbuf_p->serialNo;
 
 	submit_to_shim(&sockcmd, &sockstat, sam_stat, cmd->dbuf_p->data);
 	
@@ -290,7 +288,6 @@ uint8_t ssc_locate_shim(struct scsi_cmd *cmd) {
 	sockcmd.type = HOST_LOCATE_CMD;
 	sockcmd.count = blk_no;
 	sockcmd.id = ++cmd_id;
-	sockcmd.serialNo = cmd->dbuf_p->serialNo;
 
 	/* If we want to seek closer to beginning of file than
 	 * we currently are, rewind and seek from there
@@ -334,7 +331,6 @@ uint8_t ssc_write_filemarks_shim(struct scsi_cmd *cmd) {
 	sockcmd.type = HOST_WRFM_CMD;
 	sockcmd.count = count;
 	sockcmd.id = ++cmd_id;
-	sockcmd.serialNo = cmd->dbuf_p->serialNo;
 
 	submit_to_shim(&sockcmd, &sockstat, sam_stat, cmd->dbuf_p->data);
 
@@ -374,7 +370,6 @@ uint8_t ssc_rewind_shim(struct scsi_cmd *cmd) {
 		memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
 		sockcmd.type = HOST_REWIND_CMD;
 		sockcmd.id = ++cmd_id;
-		sockcmd.serialNo = cmd->dbuf_p->serialNo;
 
 		submit_to_shim(&sockcmd, &sockstat, sam_stat, cmd->dbuf_p->data);
 
@@ -419,7 +414,6 @@ uint8_t ssc_read_position_shim(struct scsi_cmd *cmd) {
 			memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
 			sockcmd.type = HOST_READ_POS;
 			sockcmd.id = ++cmd_id;
-			sockcmd.serialNo = cmd->dbuf_p->serialNo;
 
 			submit_to_shim(&sockcmd, &sockstat, sam_stat, cmd->dbuf_p->data);
 			break;
@@ -468,7 +462,6 @@ uint8_t ssc_space_6_shim(struct scsi_cmd *cmd) {
 	memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
 	sockcmd.type = HOST_SPACE_CMD;
 	sockcmd.id = ++cmd_id;
-	sockcmd.serialNo = cmd->dbuf_p->serialNo;
 
 	submit_to_shim(&sockcmd, &sockstat, &cmd->dbuf_p->sam_stat, cmd->dbuf_p->data);
 
@@ -499,7 +492,6 @@ uint8_t ssc_space_16_shim(struct scsi_cmd *cmd) {
 	memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
 	sockcmd.type = HOST_SPACE_CMD;
 	sockcmd.id = ++cmd_id;
-	sockcmd.serialNo = cmd->dbuf_p->serialNo;
 
 	submit_to_shim(&sockcmd, &sockstat, &cmd->dbuf_p->sam_stat, cmd->dbuf_p->data);
 
@@ -566,11 +558,9 @@ uint8_t ssc_load_unload_shim(struct scsi_cmd *cmd) {
 				memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
 				sockcmd.type = HOST_LOAD_CMD;
 				sockcmd.id = ++cmd_id;
-				sockcmd.serialNo = cmd->dbuf_p->serialNo;
 
-				// make sure barcode ends in a unique value
-				const char *lastDigits = &lu_priv->barcode[strlen(lu_priv->barcode)-1];
-				sockcmd.mediaBarcode = *(int *)lastDigits & 0xff;
+				// copy barcode
+				snprintf(sockcmd.serial, MAX_SERIAL_LEN, lu_priv->barcode);
 
 				submit_to_shim(&sockcmd, &sockstat, sam_stat, cmd->dbuf_p->data);
 
@@ -597,7 +587,6 @@ uint8_t ssc_load_unload_shim(struct scsi_cmd *cmd) {
 			memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
 			sockcmd.type = HOST_UNLOAD_CMD;
 			sockcmd.id = ++cmd_id;
-			sockcmd.serialNo = cmd->dbuf_p->serialNo;
 
 			submit_to_shim(&sockcmd, &sockstat, sam_stat, cmd->dbuf_p->data);
 		}
