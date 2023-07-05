@@ -1,6 +1,7 @@
 #ifndef SHIM_H
 #define SHIM_H
 
+#include <stdbool.h>
 #include "vtl_common.h"
 #include "vtllib.h"
 
@@ -32,22 +33,41 @@ typedef enum {
     
 } shimTaskType;
 
-typedef enum {
-    SUCCESS, CHECK
-} shimStatus;
+enum hostCommandStatus  {SUCCESS, CHECK};
 
 struct mhvtl_socket_cmd {
-    uint16_t id;                        // packet ID
-    shimTaskType type;                  // derived from scsi opcode
-    uint32_t sz;                        // block size
-    uint32_t count;                     // block count
-    char serial[MAX_SERIAL_LEN];        // media serial barcode
-    uint8_t cdb[MAX_COMMAND_SIZE];      // scsi cdb
+    uint16_t    id;                     // packet ID
+    shimTaskType type;                   // derived from scsi opcode
+    uint32_t    sz;                     // block size
+    uint32_t    count;                  // block count
+    bool        sew;                    // Synchronize at Early Warning
+                                        /*
+                                           A synchronize at early-warning (SEW) bit set to one specifies the logical unit shall cause any
+                                           buffered logical objects to be transferred to the medium prior to returning status if positioned
+                                           between early-warning and EOP. A SEW bit set to zero specifies the logical unit may retain
+                                           unwritten buffered logical objects in the object buffer if positioned between early-warning and EOP
+                                         */
+    
+    bool        rew;                    // A report early-warning (REW) bit set to zero specifies the device server shall not report
+                                        // the early-warning condition for read operations and it shall report early-warning at or
+                                        // before any medium-defined early-warning position during write operations. Application
+                                        // clients should set the REW bit to zero.
+                                        /*
+                                          A REW bit set to one specifies the device server shall return CHECK CONDITION status with the additional
+                                          sense code set to END-OF-PARTITION/MEDIUM DETECTED, and the EOM bit set to one in the sense data if
+                                          early-warning position is encountered during read and write operations. If the REW bit is one and the
+                                          SEW bit is zero, the device server shall return CHECK CONDITION status with the sense key set to
+                                          VOLUME OVERFLOW if early-warning is encountered during write operations.
+                                          NOTE 60 - A REW bit set to one is intended for compatibility with application clients using legacy formats
+                                          that require an early-warning indication during read operations.
+                                        */
+    char        serial[MAX_SERIAL_LEN]; // serial number string
+    uint8_t     cdb[MAX_COMMAND_SIZE];  // scsi cdb
 };
 
 struct mhvtl_socket_stat {
     uint16_t id; // packet ID
-    shimStatus completionStatus;
+    enum hostCommandStatus completionStatus;
     uint8_t sense[SENSE_BUF_SIZE];
     uint64_t mediaBytesRemaining;
 };

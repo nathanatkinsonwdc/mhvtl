@@ -108,9 +108,10 @@ uint8_t submit_to_shim(struct mhvtl_socket_cmd *sockcmd, struct mhvtl_socket_sta
 		return *sam_stat;
 	}
 
-	// Set status
+	// Set status anbd remaining capacity
 	*sam_stat = (sockstat->completionStatus == SUCCESS) ? SAM_STAT_GOOD : SAM_STAT_CHECK_CONDITION;
 	memcpy(sense, sockstat->sense, sizeof(sense));
+	mam.remaining_capacity = sockstat->mediaBytesRemaining;
 
 	return *sam_stat;
 }
@@ -136,14 +137,6 @@ uint8_t ssc_write_6_shim(struct scsi_cmd *cmd) {
 				sz,
 				(long)cmd->dbuf_p->serialNo);
 
-	// char cdb[128] = "CMD->SCB: ";
-	// char hex[4];
-	// for(int i=0; i<6; ++i) {
-	// 	sprintf(hex, " %02x", cmd->scb[i]);
-	// 	strcat(cdb, hex);
-	// }
-	// MHVTL_DBG(3, "%s", cdb);
-
 	if ((sz * count) > lu_ssc->bufsize)
 		MHVTL_DBG(1, "Fatal: bufsize %d, requested write of %d bytes", lu_ssc->bufsize, sz);
 
@@ -156,11 +149,13 @@ uint8_t ssc_write_6_shim(struct scsi_cmd *cmd) {
 	if (!lu_ssc->pm->check_restrictions(cmd))
 		return SAM_STAT_CHECK_CONDITION;
 
-	memcpy(sockcmd.cdb, cmd->scb, sizeof(uint8_t) * cmd->scb_len); // possibly a way to avoid this copy?
+	memcpy(sockcmd.cdb, cmd->scb, sizeof(uint8_t) * cmd->scb_len);
 	memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
 	sockcmd.type = HOST_WR_CMD;
 	sockcmd.sz = sz;
 	sockcmd.count = count;
+	sockcmd.sew = true;			// waiting for REW implementation in Configuration Mode Page...
+	sockcmd.rew = false;
 	sockcmd.id = ++cmd_id;
 
 	MHVTL_DBG(2, "SHIM: %d block%s of %d bytes (%ld) **",
@@ -175,7 +170,6 @@ uint8_t ssc_write_6_shim(struct scsi_cmd *cmd) {
 		uint8_t data_format = sense[2] & 0xf0;
 		if (key != NO_SENSE) {
 			if (key == VOLUME_OVERFLOW) {
-				mam.remaining_capacity = 0L;
 				MHVTL_DBG(1, "End of Medium - VOLUME_OVERFLOW/EOM");
 			} else {
 				set_TapeAlert(cmd->lu, (uint64_t)(TA_HARD | TA_WRITE));
@@ -185,8 +179,6 @@ uint8_t ssc_write_6_shim(struct scsi_cmd *cmd) {
 		} else if ((lu_ssc->pm->drive_supports_prog_early_warning) && (data_format == SD_EOM)) {
 			MHVTL_DBG(1, "End of Medium - Programmable Early Warning");
 		}
-
-		// TODO: pass current position in status so mam.remaining_capacity can be updated
 		
 		return cmd->dbuf_p->sam_stat;
 	}
@@ -258,6 +250,8 @@ uint8_t ssc_read_6_shim(struct scsi_cmd *cmd) {
 	sockcmd.type = HOST_RD_CMD;
 	sockcmd.sz = sz;
 	sockcmd.count = count;
+	sockcmd.sew = true;
+	sockcmd.rew = false;
 	sockcmd.id = ++cmd_id;
 
 	submit_to_shim(&sockcmd, &sockstat, sam_stat, cmd->dbuf_p->data);
@@ -330,6 +324,8 @@ uint8_t ssc_write_filemarks_shim(struct scsi_cmd *cmd) {
 	memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
 	sockcmd.type = HOST_WRFM_CMD;
 	sockcmd.count = count;
+	sockcmd.sew = true;
+	sockcmd.rew = false;
 	sockcmd.id = ++cmd_id;
 
 	submit_to_shim(&sockcmd, &sockstat, sam_stat, cmd->dbuf_p->data);
@@ -337,7 +333,6 @@ uint8_t ssc_write_filemarks_shim(struct scsi_cmd *cmd) {
 	uint8_t key = sense[2] & 0x0f;
 	if (count) {
 		if (key == SD_EOM) {
-			mam.remaining_capacity = 0L;
 			MHVTL_DBG(2, "Setting EOM flag");
 		}
 	}
