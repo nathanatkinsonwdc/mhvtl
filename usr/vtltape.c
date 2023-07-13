@@ -1555,10 +1555,7 @@ static int processMessageQ(struct q_msg *msg, uint8_t *sam_stat)
 
 			memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
 			sockcmd.type = HOST_LOAD_CMD;
-
-			// make sure barcode ends with 2 numbers
-			const char *lastDigits = &pcl[strlen(pcl)-2];
-			sockcmd.mediaBarcode = atoi(lastDigits) & 0xf;
+			snprintf(sockcmd.serial, MAX_SERIAL_LEN, lu_ssc.barcode);
 
 			submit_to_shim(&sockcmd, &sockstat, sam_stat, NULL);
 
