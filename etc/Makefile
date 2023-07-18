@@ -11,7 +11,7 @@ MHVTL_TARGET_FILE = mhvtl.target
 MHVTL_LOAD_MODULES_SERVICE_FILE = mhvtl-load-modules.service
 MHVTL_CONF_FILE = mhvtl.conf
 DEVICE_CONF_FILE = device.conf
-LIB_CONTENTS_FILES = library_contents.10
+LIB_CONTENTS_FILES = library_contents.01 library_contents.02 library_contents.03 library_contents.04 library_contents.05
 
 GENERATE_DEVICE_CONF = generate_device_conf
 GENERATE_LIB_CONTENTS = generate_library_contents

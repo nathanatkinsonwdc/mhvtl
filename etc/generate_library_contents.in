@@ -110,9 +110,9 @@ CONF_SAMPLE
 		;;
 
 	*)
-		# Not a library this script created, but create some slots anyway
-		for a in {1..39} ; do
-			printf "Slot $a: M0%02d%02d\n" $LIBID $a
+		# Custom Library
+		for a in {1..16} ; do
+			printf "Slot $a: AS%02d%02dL8\n" $LIBID $a
 		done
 		;;
 	esac
