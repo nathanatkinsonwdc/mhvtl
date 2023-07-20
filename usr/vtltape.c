@@ -1528,7 +1528,8 @@ static int processMessageQ(struct q_msg *msg, uint8_t *sam_stat)
 
 				memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
 				sockcmd.type = HOST_LOAD_CMD;
-				snprintf(sockcmd.serial, MAX_SERIAL_LEN, lu_ssc.barcode);
+				sprintf(sockcmd.serial, pcl);
+				MHVTL_DBG(1, "set serial to %s\n", sockcmd.serial);
 
 				submit_to_shim(&sockcmd, &sockstat, sam_stat, NULL);
 
@@ -1555,7 +1556,8 @@ static int processMessageQ(struct q_msg *msg, uint8_t *sam_stat)
 
 			memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
 			sockcmd.type = HOST_LOAD_CMD;
-			snprintf(sockcmd.serial, MAX_SERIAL_LEN, lu_ssc.barcode);
+			sprintf(sockcmd.serial, pcl);
+			MHVTL_DBG(1, "set serial to %s\n", sockcmd.serial);
 
 			submit_to_shim(&sockcmd, &sockstat, sam_stat, NULL);
 

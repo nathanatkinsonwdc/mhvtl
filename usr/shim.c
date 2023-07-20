@@ -555,7 +555,7 @@ uint8_t ssc_load_unload_shim(struct scsi_cmd *cmd) {
 				sockcmd.id = ++cmd_id;
 
 				// copy barcode
-				snprintf(sockcmd.serial, MAX_SERIAL_LEN, lu_priv->barcode);
+				sprintf(sockcmd.serial, lu_priv->barcode);				
 				MHVTL_DBG(1, "set serial to %s\n", sockcmd.serial);
 
 				submit_to_shim(&sockcmd, &sockstat, sam_stat, cmd->dbuf_p->data);
