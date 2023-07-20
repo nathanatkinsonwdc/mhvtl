@@ -9,7 +9,9 @@
 #define SHM_SZ          16 * 1024 * 1024
 #define SHM_MODE        0777
 #define SHM_OFLAGS      O_RDWR | O_CREAT
-#define MHVTL_SOCK_NAME "/tmp/mhvtl.sock"
+#define MHVTL_SOCK_NAME_PREFIX "/tmp/mhvtl"
+#define MHVTL_SOCK_NAME_SUFFIX ".sock"
+#define MHVTL_NUM_CONNECTIONS 5
 #define MAX_SERIAL_LEN  64
 
 typedef enum { 
@@ -78,9 +80,8 @@ extern int OK_to_write;
 extern int sockfd;
 extern int is_connected;
 
-
 int socket_init(const char *sockpath);
-void shm_init(uint8_t **dbuf, size_t sz);
+void shm_init(uint8_t **dbuf, char *name, size_t sz);
 void shm_close(uint8_t *dbuf);
 uint8_t submit_to_shim(struct mhvtl_socket_cmd *sockcmd, struct mhvtl_socket_stat *sockstat, unsigned char *sam_stat, void *data);
 uint8_t ssc_write_6_shim(struct scsi_cmd *cmd);

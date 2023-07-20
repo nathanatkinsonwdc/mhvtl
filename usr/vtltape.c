@@ -2561,7 +2561,20 @@ int main(int argc, char *argv[])
 
 	/* initialize shim shared memory */
 	// shm_init(&buf, lu_ssc.bufsize);
-	shm_init(&buf, SHM_SZ);
+	
+	char shmname[24] = SHM_NAME;
+	char deviceindex[4];
+	char sockname[32] = MHVTL_SOCK_NAME_PREFIX;
+
+	sprintf(deviceindex, "%d", ctl.id);
+	strncat(shmname, deviceindex, sizeof(shmname) - 1);
+	strncat(sockname, deviceindex, sizeof(sockname) - 1);
+	strcat(sockname, MHVTL_SOCK_NAME_SUFFIX);
+
+	MHVTL_DBG(1, "shared memory file: %s", shmname);
+	MHVTL_DBG(1, "socket file: %s", sockname);
+
+	shm_init(&buf, shmname, SHM_SZ);
 	if (buf == NULL) {
 		perror("Problems allocating memory");
 		exit(1);
@@ -2570,7 +2583,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		/* Check socket connection and retry if failed */
 		if (!is_connected)
-			is_connected = ((sockfd = socket_init(MHVTL_SOCK_NAME)) < 0) ? 0 : 1;
+			is_connected = ((sockfd = socket_init(sockname)) < 0) ? 0 : 1;
 
 		/* Check for anything in the messages Q */
 		mlen = msgrcv(r_qid, &lu_ssc.r_entry, MAXOBN, my_id, IPC_NOWAIT);

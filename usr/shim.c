@@ -36,8 +36,12 @@ extern struct MAM mam;
 // socket backend is responsible for listening server, including sockpath link/unlink
 // uses UNIX domain stream sockets
 int socket_init(const char *sockpath) {
-	if (sockpath == NULL)
-		sockpath = MHVTL_SOCK_NAME;
+	char *defaultIndex = "_default";
+	if (sockpath == NULL) {
+        strcpy(sockpath, MHVTL_SOCK_NAME_PREFIX);
+        strncat(sockpath, defaultIndex, 8);
+        strcat(sockpath, MHVTL_SOCK_NAME_SUFFIX);
+	}
 
     struct sockaddr_un server;
 	int fd;
@@ -64,10 +68,10 @@ int socket_init(const char *sockpath) {
 
 // don't forget to close and compile with -lrt
 // shm_init() should be called to replace buffer in main() that gets passed to mhvtl_ds
-void shm_init(uint8_t **dbuf, size_t sz) {
+void shm_init(uint8_t **dbuf, char *name, size_t sz) {
 	int fd;
 
-    if ((fd = shm_open(SHM_NAME, SHM_OFLAGS, SHM_MODE)) < 0)
+    if ((fd = shm_open(name, SHM_OFLAGS, SHM_MODE)) < 0)
         MHVTL_ERR("Could not initialize shared memory: %s", strerror(errno));
 	if (ftruncate(fd, SHM_SZ) < 0)
         MHVTL_ERR("Failed to set shared memory size: %s", strerror(errno));
