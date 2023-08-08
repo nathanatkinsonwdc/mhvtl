@@ -5,8 +5,8 @@
 # Home directory for tape emulation files
 MHVTL_HOME_PATH=@HOME_PATH@
 
-# Default media capacity (default: 500 M)
-CAPACITY=17000
+# Default media capacities (default: 500 M)
+CAPACITIES=( 10000 10000 10000 10000 10000 10000 10000 10000 )
 
 # Set default verbosity [0|1|2|3]
 VERBOSE=3

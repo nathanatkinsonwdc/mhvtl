@@ -253,11 +253,12 @@ if [[ ! -r $CONFIG_FILE ]] ; then
 	exit 1
 fi
 
-# get default capacity
+# get default capacities
 . $CONFIG_FILE
 
-# Set default capacity to 500M if not defined.
-CAPACITY=${CAPACITY:=500}
+# Set default capacities to 500M if not defined.
+CAPACITIES=${CAPACITIES:=( 500 )}
+CAPACITIES_LEN=${#CAPACITIES[@]}
 
 # override home dir if passed in by user
 if [[ ! -z "$PARAM_MHVTL_HOME_PATH" ]] ; then
@@ -288,8 +289,12 @@ find_mktape_path
 
 # for LIBCONTENTS in $MHVTL_CONFIG_PATH/library_contents.*
 echo '===>' "Reading from $MHVTL_CONFIG_PATH/$DEVICE_CONF file to find Tape Libraries and Drives ..."
+i=0
+libindex=0
 for LIBID in $(awk '/Library:/ {print $2}' $MHVTL_CONFIG_PATH/$DEVICE_CONF) ; do
 	LIBCONTENTS="$MHVTL_CONFIG_PATH/library_contents.$LIBID"
+
+	libindex=$(( i < CAPACITIES_LEN ? i : CAPACITIES_LEN-1 ))  # if more libs than capacities provided, use last-specified capacity value
 
 	if [[ ! -r $LIBCONTENTS ]] ; then
 		echo "error: not found: $LIBCONTENTS" 1>&2
@@ -306,13 +311,16 @@ for LIBID in $(awk '/Library:/ {print $2}' $MHVTL_CONFIG_PATH/$DEVICE_CONF) ; do
 			echo "warning: removing entry: $MHVTL_HOME_PATH/$a"
 			rm -rf $MHVTL_HOME_PATH/$a
 		fi
-		echo '===>' "Creating entry: $MHVTL_HOME_PATH/$a ..."
+		# echo '===>' "Creating entry: $MHVTL_HOME_PATH/$a ..."
 		set_density $a
 		set_media_type $a
 		# pass in "-D[0-9]" for debugging, "-v" for verbosity
-		$MKTAPE_PATH/mktape -v -D5 -l $LIBID -s $CAPACITY -t $MEDIA_TYPE -m $a -d $DENSITY \
+
+		echo "Setting Capacity to" ${CAPACITIES[libindex]} "MB..."
+		$MKTAPE_PATH/mktape -v -D5 -l $LIBID -s ${CAPACITIES[libindex]} -t $MEDIA_TYPE -m $a -d $DENSITY \
 			-C $MHVTL_CONFIG_PATH -H $MHVTL_HOME_PATH
 		res=$?
 		[[ $res -eq 0 ]] || exit 1
 	done
+	(( i++ ))
 done
