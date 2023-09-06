@@ -80,7 +80,7 @@ extern int OK_to_write;
 extern int sockfd;
 extern int is_connected;
 
-int socket_init(const char *sockpath);
+int socket_init(char *sockpath);
 void shm_init(uint8_t **dbuf, char *name, size_t sz);
 void shm_close(uint8_t *dbuf);
 uint8_t submit_to_shim(struct mhvtl_socket_cmd *sockcmd, struct mhvtl_socket_stat *sockstat, unsigned char *sam_stat, void *data);

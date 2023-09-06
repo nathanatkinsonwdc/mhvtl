@@ -29,18 +29,24 @@
 #include "mode.h"
 #include "shim.h"
 
+#ifndef READ_POSITION_LEN
+#define READ_POSITION_LEN 20
+#endif
+
+#ifndef READ_POSITION_LONG_LEN
+#define READ_POSITION_LONG_LEN 32
+#endif
+
 unsigned int cmd_id = 0;
 extern uint8_t sense[SENSE_BUF_SIZE];
 extern struct MAM mam;
 
 // socket backend is responsible for listening server, including sockpath link/unlink
 // uses UNIX domain stream sockets
-int socket_init(const char *sockpath) {
-	char *defaultIndex = "_default";
+int socket_init(char *sockpath) {
 	if (sockpath == NULL) {
-        strcpy(sockpath, MHVTL_SOCK_NAME_PREFIX);
-        strncat(sockpath, defaultIndex, 8);
-        strcat(sockpath, MHVTL_SOCK_NAME_SUFFIX);
+		MHVTL_DBG(1, "SOCKET ERROR: null socket path");
+		return -1;
 	}
 
     struct sockaddr_un server;
@@ -135,8 +141,7 @@ uint8_t ssc_write_6_shim(struct scsi_cmd *cmd) {
 	current_state = MHVTL_STATE_WRITING;
 
 	opcode_6_params(cmd, &count, &sz);
-	MHVTL_DBG(1, "%s(): %d block%s of %d bytes (%ld) **",
-				__func__,
+	MHVTL_DBG(1, "%d block%s of %d bytes (%ld) **",
 				count, count == 1 ? "" : "s",
 				sz,
 				(long)cmd->dbuf_p->serialNo);
@@ -162,10 +167,7 @@ uint8_t ssc_write_6_shim(struct scsi_cmd *cmd) {
 	sockcmd.rew = false;
 	sockcmd.id = ++cmd_id;
 
-	MHVTL_DBG(2, "SHIM: %d block%s of %d bytes (%ld) **",
-				sockcmd.count, sockcmd.count == 1 ? "" : "s",
-				sockcmd.sz,
-				(long)cmd->dbuf_p->serialNo);
+	MHVTL_DBG(2, "command ID: (%ld)", (long)cmd->dbuf_p->serialNo);
 
 	if (OK_to_write) {
 		submit_to_shim(&sockcmd, &sockstat, &cmd->dbuf_p->sam_stat, cmd->dbuf_p->data);
@@ -415,7 +417,7 @@ uint8_t ssc_read_position_shim(struct scsi_cmd *cmd) {
 			sockcmd.id = ++cmd_id;
 
 			submit_to_shim(&sockcmd, &sockstat, sam_stat, cmd->dbuf_p->data);
-			cmd->dbuf_p->sz = cmd->dbuf_p->data;
+			cmd->dbuf_p->sz = (service_action == 1) ? READ_POSITION_LEN : READ_POSITION_LONG_LEN;
 			break;
 		default:
 			MHVTL_DBG(1, "service_action not supported");
