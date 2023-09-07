@@ -171,7 +171,7 @@ make_vtl_media: make_vtl_media.in
 	chmod 755 $@
 
 clean:
-	rm -f vtltape.o dump_tape.o q.o \
+	rm -f vtltape.o shim.o dump_tape.o q.o \
 		vtlcmd.o dump_messageQ.o core mktape.o vtllib.o \
 		libvtlscsi.o libvtlscsi.so libvtlcart.o libvtlcart.so \
 		vtllibrary.o \
