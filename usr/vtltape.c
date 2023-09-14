@@ -1527,7 +1527,7 @@ static int processMessageQ(struct q_msg *msg, uint8_t *sam_stat)
 				loadTape(pcl, sam_stat);
 
 				memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
-				sockcmd.type = HOST_LOAD_CMD;
+				sockcmd.type = HOST_LOAD;
 				sprintf(sockcmd.serial, pcl);
 				MHVTL_DBG(1, "set serial to %s\n", sockcmd.serial);
 
@@ -1555,7 +1555,7 @@ static int processMessageQ(struct q_msg *msg, uint8_t *sam_stat)
 			loadTape(pcl, sam_stat);
 
 			memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
-			sockcmd.type = HOST_LOAD_CMD;
+			sockcmd.type = HOST_LOAD;
 			sprintf(sockcmd.serial, pcl);
 			MHVTL_DBG(1, "set serial to %s\n", sockcmd.serial);
 
@@ -1596,7 +1596,7 @@ static int processMessageQ(struct q_msg *msg, uint8_t *sam_stat)
 		unloadTape(FALSE, sam_stat);
 
 		memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
-		sockcmd.type = HOST_UNLOAD_CMD;
+		sockcmd.type = HOST_UNLOAD;
 
 		submit_to_shim(&sockcmd, &sockstat, sam_stat, NULL);
 

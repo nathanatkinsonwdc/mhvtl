@@ -160,7 +160,7 @@ uint8_t ssc_write_6_shim(struct scsi_cmd *cmd) {
 
 	memcpy(sockcmd.cdb, cmd->scb, sizeof(uint8_t) * cmd->scb_len);
 	memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
-	sockcmd.type = HOST_WR_CMD;
+	sockcmd.type = HOST_WRITE;
 	sockcmd.sz = sz;
 	sockcmd.count = count;
 	sockcmd.sew = true;			// waiting for REW implementation in Configuration Mode Page...
@@ -253,7 +253,7 @@ uint8_t ssc_read_6_shim(struct scsi_cmd *cmd) {
 	// populate packet data
 	memcpy(sockcmd.cdb, cdb, sizeof(uint8_t) * cmd->scb_len);
 	memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
-	sockcmd.type = HOST_RD_CMD;
+	sockcmd.type = HOST_READ;
 	sockcmd.sz = sz;
 	sockcmd.count = count;
 	sockcmd.sew = true;
@@ -285,7 +285,7 @@ uint8_t ssc_locate_shim(struct scsi_cmd *cmd) {
 	// populate packet data
 	memcpy(sockcmd.cdb, cmd->scb, sizeof(uint8_t) * cmd->scb_len);
 	memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
-	sockcmd.type = HOST_LOCATE_CMD;
+	sockcmd.type = HOST_LOCATE;
 	sockcmd.count = blk_no;
 	sockcmd.id = ++cmd_id;
 
@@ -328,7 +328,7 @@ uint8_t ssc_write_filemarks_shim(struct scsi_cmd *cmd) {
 
 	memcpy(sockcmd.cdb, cmd->scb, sizeof(uint8_t) * cmd->scb_len); 
 	memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
-	sockcmd.type = HOST_WRFM_CMD;
+	sockcmd.type = HOST_WRITE_FM;
 	sockcmd.count = count;
 	sockcmd.sew = true;
 	sockcmd.rew = false;
@@ -369,7 +369,7 @@ uint8_t ssc_rewind_shim(struct scsi_cmd *cmd) {
 
 		memcpy(sockcmd.cdb, cmd->scb, sizeof(uint8_t) * cmd->scb_len); 
 		memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
-		sockcmd.type = HOST_REWIND_CMD;
+		sockcmd.type = HOST_REWIND;
 		sockcmd.id = ++cmd_id;
 
 		submit_to_shim(&sockcmd, &sockstat, sam_stat, cmd->dbuf_p->data);
@@ -462,7 +462,7 @@ uint8_t ssc_space_6_shim(struct scsi_cmd *cmd) {
 
 	memcpy(sockcmd.cdb, cmd->scb, sizeof(uint8_t) * cmd->scb_len); 
 	memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
-	sockcmd.type = HOST_SPACE_CMD;
+	sockcmd.type = HOST_SPACE;
 	sockcmd.id = ++cmd_id;
 
 	submit_to_shim(&sockcmd, &sockstat, &cmd->dbuf_p->sam_stat, cmd->dbuf_p->data);
@@ -492,7 +492,7 @@ uint8_t ssc_space_16_shim(struct scsi_cmd *cmd) {
 
 	memcpy(sockcmd.cdb, cmd->scb, sizeof(uint8_t) * cmd->scb_len); 
 	memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
-	sockcmd.type = HOST_SPACE_CMD;
+	sockcmd.type = HOST_SPACE;
 	sockcmd.id = ++cmd_id;
 
 	submit_to_shim(&sockcmd, &sockstat, &cmd->dbuf_p->sam_stat, cmd->dbuf_p->data);
@@ -558,7 +558,7 @@ uint8_t ssc_load_unload_shim(struct scsi_cmd *cmd) {
 
 				memcpy(sockcmd.cdb, cmd->scb, sizeof(uint8_t) * cmd->scb_len);
 				memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
-				sockcmd.type = HOST_LOAD_CMD;
+				sockcmd.type = HOST_LOAD;
 				sockcmd.id = ++cmd_id;
 
 				// copy barcode
@@ -588,7 +588,7 @@ uint8_t ssc_load_unload_shim(struct scsi_cmd *cmd) {
 
 			memcpy(sockcmd.cdb, cmd->scb, sizeof(uint8_t) * cmd->scb_len);
 			memset(&sockstat, 0, sizeof(struct mhvtl_socket_stat));
-			sockcmd.type = HOST_UNLOAD_CMD;
+			sockcmd.type = HOST_UNLOAD;
 			sockcmd.id = ++cmd_id;
 
 			submit_to_shim(&sockcmd, &sockstat, sam_stat, cmd->dbuf_p->data);
